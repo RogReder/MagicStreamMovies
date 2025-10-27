@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/RogReder/MagicStreamMovies/Server/MagicStreamMoviesServer/database"
 	"github.com/RogReder/MagicStreamMovies/Server/MagicStreamMoviesServer/routes"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"github.com/joho/godotenv"
+	"github.com/gin-contrib/cors" 
 )
 
 func main() {
@@ -38,9 +40,21 @@ func main() {
 		}
 	}()
 
+	config := cors.Config{}
+
+	config.AllowAllOrigins = true
+	config.AllowMethods = []string{"GET", "POST", "PATCH"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
+	config.ExposeHeaders = []string{"Content-Length"}
+	config.MaxAge = 12 * time.Hour
+	
+
+	router.Use(cors.New(config))
+
 	routes.SetUpUnProtectedRoutes(router, client)
 	routes.SetUpProtectedRoutes(router, client)
 
+	
 
 	if err := router.Run(":8080"); err != nil {
 		fmt.Println("Failed to start server", err)
