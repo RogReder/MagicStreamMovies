@@ -25,6 +25,7 @@ type UserLogin struct{
 	Password string `json:"password" validate:"required,min=6"`
 }
 
+
 type UserResponse struct{
 	UserId string `json:"user_id"`
 	FirstName string `json:"first_name"`

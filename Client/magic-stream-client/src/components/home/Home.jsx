@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../../api/axiosConfig";
-import Movies from "../movies/movies";
+import Movies from "../movies/Movies";
+import Spinner from "../spinner/Spinner";
 
-const Home = () => {
+const Home = ({updateMovieReview}) => {
     const [movies, setMovies] = useState([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState();
@@ -30,9 +31,9 @@ const Home = () => {
         <>
             {
                 loading? (
-                    <h2>Loading...</h2>
+                    <Spinner/>
                 ):(
-                    <Home movies={movies} message={message}/>
+                    <Movies movies={movies} updateMovieReview={updateMovieReview} message={message}/>
                 )}
         </>
     )

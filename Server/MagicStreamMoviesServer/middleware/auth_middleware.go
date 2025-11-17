@@ -5,6 +5,7 @@ import (
 
 	"github.com/RogReder/MagicStreamMovies/Server/MagicStreamMoviesServer/utils"
 	"github.com/gin-gonic/gin"
+	"fmt"
 )
 
 func AuthMiddleWare() gin.HandlerFunc{
@@ -31,6 +32,7 @@ func AuthMiddleWare() gin.HandlerFunc{
 			return 
 		}
 
+		fmt.Println("ROLE", claims)
 		c.Set("userId", claims.UserId)
 		c.Set("role", claims.Role)
 
