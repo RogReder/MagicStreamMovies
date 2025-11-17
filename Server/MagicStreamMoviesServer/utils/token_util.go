@@ -190,5 +190,5 @@ func ValidateRefreshToken(tokenString string) (*SignedDetails, error) {
 		return nil, errors.New("refresh token has expired")
 	}
 
-	return claims, nil
+	return claims, nil;
 }
