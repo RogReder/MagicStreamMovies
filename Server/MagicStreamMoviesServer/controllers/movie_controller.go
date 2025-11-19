@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"fmt"
 
 	"github.com/RogReder/MagicStreamMovies/Server/MagicStreamMoviesServer/database"
 	"github.com/RogReder/MagicStreamMovies/Server/MagicStreamMoviesServer/models"
@@ -16,10 +17,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
-	"github.com/tmc/langchaingo/llms/openai"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
 )
 
 var validate = validator.New()
@@ -180,7 +182,8 @@ func AdminReviewUpdate(client *mongo.Client) gin.HandlerFunc {
 }
 
 func GetReviewRanking(admin_review string, client *mongo.Client, c *gin.Context) (string, int, error) {
-	rankings, err := GetRankings(client, c)
+
+	rankings, err := GetRankings(client,c)
 
 	if err != nil {
 		return "", 0, err
@@ -208,7 +211,10 @@ func GetReviewRanking(admin_review string, client *mongo.Client, c *gin.Context)
 		return "", 0, errors.New("could not read OPENAI_API_KEY")
 	}
 
-	llm, err := openai.New(openai.WithToken(OpenAiApiKey))
+	llm, err := openai.New(
+		openai.WithBaseURL("https://api.groq.com/openai/v1"),
+		openai.WithToken(OpenAiApiKey),
+	)
 
 	if err != nil {
 		return "", 0, err
@@ -218,24 +224,44 @@ func GetReviewRanking(admin_review string, client *mongo.Client, c *gin.Context)
 
 	base_prompt := strings.Replace(base_prompt_template, "{rankings}", sentimentDelimited, 1)
 
-	response, err := llm.Call(c, base_prompt+admin_review)
+	messages := []llms.MessageContent{
+		llms.TextParts(llms.ChatMessageTypeSystem, base_prompt),
+		llms.TextParts(llms.ChatMessageTypeHuman, admin_review),
+	}
+
+
+	response, err := llm.GenerateContent(
+		context.Background(),
+		messages,
+		llms.WithModel("llama-3.1-8b-instant"),
+	)
+
+	log.Println(err);
 
 	if err != nil {
-		return "", 0, err
+		return "", 0, fmt.Errorf("generation failed: %w", err)
 	}
-	rankVal := 0
 
+	// Extract model text (response.Choices[0].Content is []byte)
+	responseText := ""
+	if len(response.Choices) > 0 && len(response.Choices[0].Content) > 0 {
+		responseText = string(response.Choices[0].Content)
+	}
+
+	// Match response text with your ranking list
+	rankVal := 0
 	for _, ranking := range rankings {
-		if ranking.RankingName == response {
+		if ranking.RankingName == strings.TrimSpace(responseText) {
 			rankVal = ranking.RankingValue
 			break
 		}
 	}
-	return response, rankVal, nil
+	log.Println(responseText, rankVal);
+	return responseText, rankVal, nil
 
 }
 
-func GetRankings(client *mongo.Client, c *gin.Context) ([]models.Ranking, error) {
+func GetRankings(client *mongo.Client,c *gin.Context) ([]models.Ranking, error) {
 	var rankings []models.Ranking
 
 	var ctx, cancel = context.WithTimeout(c, 100*time.Second)
